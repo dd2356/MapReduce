@@ -1,0 +1,8 @@
+Pseudo code detailing MapReduce loop. Modify as necessary
+
+while (file not fully read):
+	read: MPI_File -> char*
+	map: char* -> map
+	shuffle: int n (rank), map -> struct_pair*
+	communicate: struct_pair* -> struct_pair*
+	reduce: struct_pair*, persistent_map -> void
