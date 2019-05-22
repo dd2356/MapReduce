@@ -4,8 +4,8 @@ OBJ = $(SRC:.cpp=.o)
 BIN = ./bin
 TARGET = mapreduce.out
 
-LDFLAGS = -lm 
-CFLAGS = -I./include -g -Wall -O3 --std=c++11
+LDFLAGS = -lm -fopenmp
+CFLAGS = -I./include -g -Wall -O3 --std=c++11 -fopenmp
 
 all: dir $(BIN)/$(TARGET)
 
