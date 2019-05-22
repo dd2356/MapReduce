@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <map>
+#include <mpi.h>
 #include <stdlib.h>
 
 struct Pair;
