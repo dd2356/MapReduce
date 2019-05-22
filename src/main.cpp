@@ -1,4 +1,3 @@
-#include "msr.h"
 #include "msr_comm.h"
 #include <stdio.h>
 #include <math.h>
@@ -21,7 +20,7 @@ int main(int argc, char **argv) {
 	int *out_counts = (int*) malloc(size * sizeof(int));
 	int *out_offsets = (int*) malloc(size * sizeof(int));
 
-	MPI_File_open(MPI_COMM_WORLD, "dat/wiki_10GB.txt", 
+	MPI_File_open(MPI_COMM_WORLD, "dat/wiki_100k.txt", 
 		MPI_MODE_RDONLY, MPI_INFO_NULL, &fh );
 	MPI_File_get_size(fh, &file_size);
 	int loop_limit = file_size / chunk_size / size;
@@ -36,6 +35,12 @@ int main(int argc, char **argv) {
 		Pair *out_data = (Pair*) malloc(words.size() * sizeof(Pair));
 		shuffle(words, size, out_counts, out_offsets, out_data);
 		// printf("%s\n", buf);
+        int sendcount[size]; 
+        Pair *out_data = (Pair*) malloc(words.size() * sizeof(Pair));  
+        shuffle(words, size, sendcount, out_data); 
+        Pair *in_data; 
+        int buff_size = communicate(out_data, sendcount, in_data, size); 
+        printf("Recieved buffer of size %d",buff_size); 
 	}
 
 }

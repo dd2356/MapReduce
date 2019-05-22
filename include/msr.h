@@ -14,8 +14,8 @@ struct Word {
 }; 
 
 struct Pair { 
-	long count;
-	char word[WORD_SIZE];
+    long count;
+    char word[WORD_SIZE]; 
 }; 
 
 namespace std {
@@ -43,6 +43,10 @@ namespace std {
 }
 
 void map(char *data, int size, std::unordered_map<Word, long> &out_map);
+<<<<<<< HEAD
 void shuffle(std::unordered_map<Word,long> &map, int size, 
 	int *out_counts, int *out_offsets, Pair *out_data); 
+=======
+void shuffle(std::unordered_map<Word,long> &map, int size, int *out_offsets, Pair *out_data); 
+>>>>>>> a316922... Basic communication
 void reduce(Pair *data, std::unordered_map<Word,long> *out_map); 
