@@ -63,7 +63,19 @@ void shuffle(std::unordered_map<Word,long> &map, int size,
 	}
 }
 
-void reduce(Pair *data, std::unordered_map<Word,long> *out_map) {
-
+void reduce(Pair *data, int n, std::unordered_map<Word,long> &out_map) {
+	for (int i = 0; i < n; i++) {
+		// printf("test\n");
+		Word w;
+		// printf("test: %s\n", data[i].word);
+		memcpy(w.word, data[i].word, WORD_SIZE);
+		// printf("test\n");
+		// w.word = data[i].word;
+		int count = data[i].count;
+		if (out_map.count(w) == 0) {
+			out_map[w] = 0;
+		}
+		out_map[w] += count;
+	}
 }
 

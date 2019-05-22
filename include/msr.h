@@ -45,4 +45,4 @@ namespace std {
 void map(char *data, int size, std::unordered_map<Word, long> &out_map);
 void shuffle(std::unordered_map<Word,long> &map, int size, 
 	int *out_counts, int *out_offsets, Pair *out_data); 
-void reduce(Pair *data, std::unordered_map<Word,long> *out_map); 
+void reduce(Pair *data, int n, std::unordered_map<Word,long> &out_map); 

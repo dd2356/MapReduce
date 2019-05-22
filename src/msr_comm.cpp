@@ -80,7 +80,7 @@ void define_pair_type(MPI_Datatype *type)  {
     MPI_Type_commit(type); 
 }
 
-int communicate(Pair *sendbuf, int *sendcounts, Pair *recvbuf, int n) {
+int communicate(Pair *sendbuf, int *sendcounts, Pair **recvbuf, int n) {
     MPI_Comm comm = MPI_COMM_WORLD; 
     /* populate recvcounts*/ 
     int recvcounts[n]; 
@@ -91,11 +91,18 @@ int communicate(Pair *sendbuf, int *sendcounts, Pair *recvbuf, int n) {
     displacement(recvcounts,     rdispl, n); 
     /* allocate recvbuf */
     int size = sum(recvcounts, n); 
-    recvbuf = (Pair*)malloc(sizeof(Pair) * size); 
+    (*recvbuf) = (Pair*)malloc(sizeof(Pair) * size);
+    // printf("size: %d\n", size);
     /* create custom type */ 
     MPI_Datatype pair_type; 
     define_pair_type(&pair_type); 
 
-    MPI_Alltoallv(sendbuf, sendcounts, sdispl, pair_type, recvbuf, recvcounts, rdispl, pair_type, comm); 
+    MPI_Alltoallv(sendbuf, sendcounts, sdispl, pair_type, 
+        *recvbuf, recvcounts, rdispl, pair_type, comm);
+    // printf("before loop\n");
+    // for (int i = 0; i < size; i++) {
+        // printf("word: %s -> %ld\n", (*recvbuf[i]).word, (*recvbuf[i]).count);
+    // }
+    // printf("after loop\n");
     return size; 
 }
