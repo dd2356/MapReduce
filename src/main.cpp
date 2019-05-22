@@ -35,11 +35,7 @@ int main(int argc, char **argv) {
 		Pair *out_data = (Pair*) malloc(words.size() * sizeof(Pair));
 		shuffle(words, size, out_counts, out_offsets, out_data);
 		// printf("%s\n", buf);
-        int sendcount[size]; 
-        Pair *out_data = (Pair*) malloc(words.size() * sizeof(Pair));  
-        shuffle(words, size, sendcount, out_data); 
-        Pair *in_data; 
-        int buff_size = communicate(out_data, sendcount, in_data, size); 
+        int buff_size = communicate(out_data, out_counts, out_data, size); 
         printf("Recieved buffer of size %d",buff_size); 
 	}
 
