@@ -30,10 +30,40 @@ void map(char *data, int size, std::unordered_map<Word,long> &map) {
 }
 
 
-void shuffle(std::unordered_map<Word,long> *map, int size, int *out_offsets, Pair *out_data) {
+void shuffle(std::unordered_map<Word,long> &map, int size, 
+	int *out_counts, int *out_offsets, Pair *out_data) {
 
+	memset(out_counts, 0, size * sizeof(*out_counts));
+    std::hash<Word> word_hasher;
+	for (auto& it: map) {
+		Word w = it.first;
+		// long count = it.second;
+		size_t target_process = word_hasher(w) % size;
+	    // printf("%s: %ld, %lu\n", w.word, count, hash);
+	    out_counts[target_process]++;
+	}
+	// return;
+	out_offsets[0] = 0;
+	for (int i = 1; i < size; i++) {
+		out_offsets[i] = out_offsets[i-1] + out_counts[i-1];
+	}
+
+	int *temp_counts = (int*) calloc(size, sizeof(int));
+	for (auto& it: map) {
+		Word w = it.first;
+		long count = it.second;
+		size_t target_process = word_hasher(w) % size;
+		Pair p;
+		memcpy(p.word, w.word, WORD_SIZE);
+		p.count = count;
+	    int index = out_offsets[target_process] + temp_counts[target_process];
+	    // printf("index: %d / %lu (%d, %d)\n", index, map.size(), out_counts[target_process], temp_counts[target_process]);
+	    temp_counts[target_process]++;
+	    out_data[index] = p;
+	}
 }
 
 void reduce(Pair *data, std::unordered_map<Word,long> *out_map) {
 
 }
+
