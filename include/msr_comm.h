@@ -7,5 +7,6 @@
 struct Pair;
 struct Word;
 
-void read(MPI_File *fh, char *buf, int iteration);
+void read(MPI_File *fh, char *buf, MPI_Offset chunk_size, 
+	MPI_Offset overlap, int iteration);
 void communicate(Pair *sendbuf, int *offsets, Pair *recvbuf);
