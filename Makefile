@@ -5,7 +5,7 @@ BIN = ./bin
 TARGET = mapreduce.out
 
 LDFLAGS = -lm 
-CFLAGS = -I./include -g -Wall -O3
+CFLAGS = -I./include -g -Wall -O3 --std=c++11
 
 all: dir $(BIN)/$(TARGET)
 

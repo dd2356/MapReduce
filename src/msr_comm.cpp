@@ -1,7 +1,7 @@
 #include "msr_comm.h"
 #include <stdio.h>
 #include <math.h>
-#include <map>
+#include <unordered_map>
 #include <stdlib.h>
 #include <mpi.h>
 

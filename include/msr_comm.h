@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <math.h>
-#include <map>
+#include <unordered_map>
 #include <mpi.h>
 #include <stdlib.h>
 
