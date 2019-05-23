@@ -23,20 +23,16 @@ namespace std {
 	template <>
 	struct hash<Word>
 	{
-		std::size_t operator()(const Word& k) const
-		{
-			// using std::size_t;
-			using std::hash;
-			// using std::string;
+		std::size_t operator()(const Word& word) const {
 
 			unsigned long h = 5381;
 			int c;
-			const char *w = k.word;
+			const char *w = word.word;
 
 			while ((c = *w++)) {
-				h = ((h << 5) + h) + c; /* hash * 33 + c */
+				// h = ((h << 5) + h) + c;  hash * 33 + c;
+				h = ((h << 5) + h) + (c + 32 * (('A' <= c) & (c <= 'Z')));
 			}
-
 			return h;
 		}
 	};

@@ -5,6 +5,14 @@
 #include <stdlib.h>
 #include <mpi.h>
 #include <time.h>
+#include <unistd.h>
+#include <vector>
+#include <algorithm>
+
+// descending sort
+bool sort_words(Pair p1, Pair p2) {
+	return p1.count > p2.count;
+}
 
 int main(int argc, char **argv) {
 
@@ -43,7 +51,7 @@ int main(int argc, char **argv) {
 
 	for (int i = 0; i < loop_limit; i++) {
 		if (rank == 0) {
-			printf("iteration: %d / %d\n", i, loop_limit);
+			printf("\riteration: %d / %d", i+1, loop_limit);
 		}
 		start = clock();
 		read(&fh, buf, chunk_size, overlap, i);
@@ -65,22 +73,47 @@ int main(int argc, char **argv) {
 		reduce(recvbuf, buff_size, process_map);
 		end = clock(); times[4] += ((double) (end - start)) / CLOCKS_PER_SEC;
 	}
+	if (rank == 0) {
+		printf("\n");
+	}
 	Word max_word;
 	long max_count = 0;
+	long total_chars = 0;
+	std::vector<Pair> all_pairs;
 	for (auto& it: process_map) {
 		if (it.second > max_count) {
 			max_count = it.second;
 			max_word = it.first;
 		}
+		Pair p;
+		memcpy(p.word, it.first.word, WORD_SIZE);
+		p.count = it.second;
+		all_pairs.push_back(p);
+		int len = 0;
+		while (it.first.word[++len] != '\0');
+		total_chars += len * it.second;
 		// printf("%s -> %ld\n", it.first.word, it.second);
 	}
-	printf("process %d: %lu words (%s -> %ld)\n", 
-		rank, process_map.size(), max_word.word, max_count);
-	printf("times: %.2f, %.2f, %.2f, %.2f, %.2f\n", 
+	// TODO: perform an allgather first, and have 
+	// root process write to file after sorting words
+	std::sort(all_pairs.begin(), all_pairs.end(), sort_words);
+	usleep (10000 * rank);
+	int top_10 = all_pairs.size() < 10 ? all_pairs.size() : 10;
+	for (int i = 0; i < top_10; i++) {
+		printf("Rank %d, top %d: %s -> %ld\n", 
+			rank, i, all_pairs[i].word, all_pairs[i].count);
+	}
+
+	usleep(100000);
+	usleep(10000 * rank);
+	printf("times: read: %.2f, map: %.2f, shuffle: %.2f, "
+		"communicate: %.2f, reduce: %.2f\n", 
 		times[0],
 		times[1],
 		times[2],
 		times[3],
 		times[4]
 	);
+	printf("Total chars: %ld\n", total_chars);
+	MPI_Finalize();
 }

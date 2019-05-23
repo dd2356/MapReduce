@@ -5,35 +5,102 @@
 #include <unordered_map>
 #include <omp.h>
 
+// #define DEBUG 
 
-void map(char *data, int size, std::unordered_map<Word,long> &map) { 
-	std::vector<int> newlines;
-	std::vector<int> paragraph_starts;
-	std::vector<int> paragraph_ends;
+void find_newlines_and_paragraphs(char *data, int size, 
+	std::vector<int> &newlines, std::vector<int> &paragraph_starts, 
+	std::vector<int> &paragraph_ends) {
 
 	for (int i = 0; i < size; i++) {
 		if (data[i] == '\n') {
 			newlines.push_back(i);
 		}
 	}
+
 	for (unsigned int i = 0; i < newlines.size(); i++) {
+
 		int ind = newlines[i]+1;
 		bool is_paragraph = (data[ind] == '<') 
 			&& (data[ind+1] == 'p') && (data[ind+2] == '>');
-			// printf("paragraph_starts: %c%c%c, %d\n", data[ind+1], data, is_paragraph);
+
 		if (i < newlines.size() - 1 && is_paragraph) {
 			int next_ind = newlines[i+1];
 			paragraph_starts.push_back(ind);
 			paragraph_ends.push_back(next_ind);
 		}
 	}
+}
 
-	// std::regex r("\\b\\w+\\b");
-	// std::cmatch sm;
+inline bool is_separator(char a) {
+	return a == ' ' || a == ',' || a == '.' || a == '!' 
+		|| a == '?' || a == ':' || a == ';';
+}
+
+inline bool is_breakpoint(char a) {
+	return is_separator(a) || a == '<';
+}
+
+inline bool is_letter(char a) {
+	return (a >= 'a' && a <= 'z') || (a >= 'A' && a <= 'Z') 
+		|| (a == '\'' || a == '-');
+}
+
+// Debug
+// #ifdef DEBUG
+#define NON_VALID_WORD 2
+#define TOO_LONG   3
+#define TOO_SHORT 4
+#define SUCCESS 5
+// #endif
+// Debug end
+
+int try_get_word(char *data, std::unordered_map<Word,long> &map, 
+	int s_ind, int e_ind, int &i, Word &w, long &length_counter) {
+	
+	int temp_length = 0;
+	bool valid_word = true;
+
+	while (!is_breakpoint(data[i+temp_length])
+		&& i + temp_length < e_ind && temp_length < WORD_SIZE) {
+		if (!is_letter(data[i+temp_length])) {
+			valid_word = false;
+		}
+		temp_length++;
+	}
+	if (valid_word && temp_length < WORD_SIZE && temp_length > 1) {
+		memcpy(w.word, &data[i], temp_length);
+		w.word[temp_length] = '\0';
+		map[w]++;
+		length_counter += temp_length - 1;
+		if (data[i+temp_length] == '<') {
+			temp_length--;
+		}
+		i += temp_length;
+		return SUCCESS;
+	}
+	return valid_word ? (temp_length <= 1 ? TOO_SHORT : TOO_LONG) 
+		: NON_VALID_WORD;
+}
+
+void map(char *data, int size, std::unordered_map<Word,long> &map) { 
+	std::vector<int> newlines, paragraph_starts, paragraph_ends;
+
+	find_newlines_and_paragraphs(data, size, 
+		newlines, paragraph_starts, paragraph_ends);
+	long total_word_length = 0; // also debug variable
+#ifdef DEBUG
+	long total_text_length = 0;
+	int non_valid_words = 0;
+	int success_words = 0;
+	int too_long = 0;
+	int too_short = 0;
+	for (unsigned int i = 0; i < paragraph_starts.size(); i++) {
+		total_text_length += paragraph_ends[i] - paragraph_starts[i];
+	}
+#endif
+
 	Word w;
 	bool in_tag = false;
-	bool valid_word;
-	int temp_ind = 0;
 
 	for (unsigned int i = 0; i < paragraph_starts.size(); i++) {
 		int s_ind = paragraph_starts[i]+2;
@@ -41,46 +108,39 @@ void map(char *data, int size, std::unordered_map<Word,long> &map) {
 		for (int i = s_ind; i < e_ind; i++) {
 			if (data[i] == '<') {
 				in_tag = true;
-				continue;
 			} else if (data[i] == '>') {
 				in_tag = false;
 				continue;
-			}
-			if (in_tag) {
+			} else if (!is_letter(data[i])) {
 				continue;
-			} else {
-				// printf("looking for word\n");
-				temp_ind = 0;
-				valid_word = true;
-				while (data[i+temp_ind] != ' ' && data[i+temp_ind] != '<' 
-					&& i + temp_ind < e_ind && temp_ind < WORD_SIZE) {
-					if ((data[i+temp_ind] < 'a' || data[i+temp_ind] > 'z') 
-						&& (data[i+temp_ind] < 'A' || data[i+temp_ind] > 'Z')) {
-						valid_word = false;
-					}
-					temp_ind++;
-				}
-				if (data[i+temp_ind] == '<') {
-					// printf("found tag\n");
-					i += temp_ind - 1;
-					continue;
-				} else if (valid_word && temp_ind < WORD_SIZE && temp_ind > 1) {
-					memcpy(w.word, &data[i], temp_ind);
-					w.word[temp_ind] = '\0';
-					// printf("(%s)\n", w.word);
-					if (map.count(w) == 0) {
-						map[w] = 0;
-					}
-					map[w] += 1;
-					i += temp_ind;
-				} else {
-					// printf("word too long\n");
-				}
+			}
+			if (!in_tag) {
+#ifdef DEBUG
+				int success = try_get_word(data, map, s_ind, e_ind, 
+					i, w, total_word_length);
+				non_valid_words += success == NON_VALID_WORD;
+				too_long += success == TOO_LONG;
+				too_short += success == TOO_SHORT;
+				success_words += success == SUCCESS;
+#else
+				try_get_word(data, map, s_ind, e_ind, i, w, total_word_length);				
+#endif
 			}
 		}
-
 	}
+#ifdef DEBUG
+	int total_words = non_valid_words + too_long + too_short + success_words;
 
+	printf("newlines: %ld, paragraphs: %ld, total length: %ld, total word "
+		"length: %ld, nv: %.2f, tl: %.2f, ts: %.2f, success: %.2f\n", 
+		newlines.size(), paragraph_starts.size(), 
+		total_text_length, total_word_length, 
+		non_valid_words / (double)(total_words),
+		too_long / (double)(total_words),
+		too_short / (double)(total_words),
+		success_words / (double)(total_words)
+	);
+#endif
 }
 
 void map2(char *data, int size, std::unordered_map<Word,long> &map) { 
@@ -99,10 +159,7 @@ void map2(char *data, int size, std::unordered_map<Word,long> &map) {
 			Word w;
 			memcpy(w.word, data + match.position(), match.length());
 			w.word[match.length()] = '\0';
-			if (map.count(w) == 0) {
-				map[w] = 0;
-			}
-			map[w] += 1;
+			map[w]++;
 			// printf("%s: %ld\n", w.word, map[w]);
 		}
 	}
@@ -136,7 +193,6 @@ void shuffle(std::unordered_map<Word,long> &map, int size,
 		memcpy(p.word, w.word, WORD_SIZE);
 		p.count = count;
 	    int index = out_offsets[target_process] + temp_counts[target_process];
-	    // printf("index: %d / %lu (%d, %d)\n", index, map.size(), out_counts[target_process], temp_counts[target_process]);
 	    temp_counts[target_process]++;
 	    out_data[index] = p;
 	}
@@ -151,9 +207,6 @@ void reduce(Pair *data, int n, std::unordered_map<Word,long> &out_map) {
 		// printf("test\n");
 		// w.word = data[i].word;
 		int count = data[i].count;
-		if (out_map.count(w) == 0) {
-			out_map[w] = 0;
-		}
 		out_map[w] += count;
 	}
 }
