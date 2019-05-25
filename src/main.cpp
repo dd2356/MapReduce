@@ -30,8 +30,8 @@ int main(int argc, char **argv) {
 
 	MPI_File fh;
 	MPI_Offset file_size, chunk_size, overlap, buffer_size;
-	chunk_size = 64 << 20; // 64 kB
-	overlap = 0 << 10; // 1kB
+	chunk_size = 64 << 20; // 64 MB
+	overlap = 0 << 20; // 2 MB
 	buffer_size = chunk_size + overlap + 1;
 	char *buf = (char*) malloc(buffer_size * sizeof(char));
 	int *out_counts = (int*) malloc(size * sizeof(int));
@@ -41,13 +41,14 @@ int main(int argc, char **argv) {
 		MPI_MODE_RDONLY, MPI_INFO_NULL, &fh );
 	MPI_File_get_size(fh, &file_size);
 	int loop_limit = file_size / chunk_size / size;
-	// loop_limit = 10;
+	loop_limit += (loop_limit == 0);
 	Pair *recvbuf;
 	std::unordered_map<Word,long> process_map;
 
 	clock_t start, end;
 	double *times = (double*)calloc(5, sizeof(double));
-	
+	// disable buffering for stdout
+	setbuf(stdout, NULL);
 
 	for (int i = 0; i < loop_limit; i++) {
 		if (rank == 0) {
@@ -58,7 +59,7 @@ int main(int argc, char **argv) {
 		end = clock(); times[0] += ((double) (end - start)) / CLOCKS_PER_SEC;
 		start = clock();
 		std::unordered_map<Word,long> words;
-		map(buf, buffer_size, words);
+		map(buf, chunk_size, overlap, words);
 		end = clock(); times[1] += ((double) (end - start)) / CLOCKS_PER_SEC;
 		start = clock();
 		Pair *out_data = (Pair*) malloc(words.size() * sizeof(Pair));

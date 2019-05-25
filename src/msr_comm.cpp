@@ -21,13 +21,16 @@ void read(MPI_File *fh, char *buf, MPI_Offset chunk_size,
 	MPI_File_get_size(*fh, &filesize);
 	filesize--;  /* get rid of text file eof */
 
+    if (offset > filesize) {
+        offset = filesize;
+    }
 	if (offset + chunk_size + overlap > filesize) {
 		chunk_size = filesize - offset;
 		overlap = 0;
 	}
+    // printf("Process %d reading %lld bytes at offset %lld\n", rank, chunk_size + overlap, offset);
 	MPI_File_read_at_all(*fh, offset, buf, chunk_size + overlap, 
 		MPI_CHAR, MPI_STATUS_IGNORE);
-
 /*
 	int start_offset = 0;
 	int end_offset = chunk_size + overlap;

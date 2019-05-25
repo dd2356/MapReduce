@@ -7,28 +7,62 @@
 
 // #define DEBUG 
 
-void find_newlines_and_paragraphs(char *data, int size, 
+void find_newlines_and_paragraphs(char *data, int size, int overlap,
 	std::vector<int> &newlines, std::vector<int> &paragraph_starts, 
 	std::vector<int> &paragraph_ends) {
 
+	bool found_new_line = false;
+	// unsigned int all_paragraphs = 0;
+
+	// find all lines in original text
 	for (int i = 0; i < size; i++) {
 		if (data[i] == '\n') {
 			newlines.push_back(i);
 		}
 	}
 
-	for (unsigned int i = 0; i < newlines.size(); i++) {
+	// find first newline in overlap region
+	for (int i = 0; i < overlap; i++) {
+		if (data[size + i] == '\n') {
+			newlines.push_back(size + i);
+			found_new_line = true;
+			// printf("found next newline at %d\n", i);
+			break;
+		}
+	}
 
+	// printf("Start of map: %ld\n", newlines.size());
+	for (int i = 0; i < (int)newlines.size() - 1; i++) {
 		int ind = newlines[i]+1;
+		while (data[ind] == '\t' || data[ind] == ' ') {
+			ind++;
+		}
+
 		bool is_paragraph = (data[ind] == '<') 
 			&& (data[ind+1] == 'p') && (data[ind+2] == '>');
 
-		if (i < newlines.size() - 1 && is_paragraph) {
+		if (is_paragraph) {
 			int next_ind = newlines[i+1];
 			paragraph_starts.push_back(ind);
 			paragraph_ends.push_back(next_ind);
+			// if (i == (int)newlines.size() - 2 && found_new_line) {
+				// printf("paragraph found at border between %d and %d\n", ind, next_ind);
+				// for (int j = ind; j < next_ind; j++) {
+					// printf("%c", data[j]);
+				// }
+			// }
 		}
+		// for (int j = newlines[i]+1; j < newlines[i+1]; j++) {
+			// if ((data[j] == '<') 
+			// && (data[j+1] == 'p') && (data[j+2] == '>')) {
+				// all_paragraphs++;
+				// break;
+			// }
+		// }
 	}
+	// if (paragraph_starts.size() != all_paragraphs) {
+		// printf("paragraphs: %ld/%d\n", paragraph_starts.size(), all_paragraphs);
+	// }
 }
 
 inline bool is_separator(char a) {
@@ -82,10 +116,9 @@ int try_get_word(char *data, std::unordered_map<Word,long> &map,
 		: NON_VALID_WORD;
 }
 
-void map(char *data, int size, std::unordered_map<Word,long> &map) { 
+void map(char *data, int size, int overlap, std::unordered_map<Word,long> &map) { 
 	std::vector<int> newlines, paragraph_starts, paragraph_ends;
-
-	find_newlines_and_paragraphs(data, size, 
+	find_newlines_and_paragraphs(data, size, overlap, 
 		newlines, paragraph_starts, paragraph_ends);
 	long total_word_length = 0; // also debug variable
 #ifdef DEBUG
