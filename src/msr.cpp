@@ -11,9 +11,6 @@ void find_newlines_and_paragraphs(char *data, int size, int overlap,
 	std::vector<int> &newlines, std::vector<int> &paragraph_starts, 
 	std::vector<int> &paragraph_ends) {
 
-	bool found_new_line = false;
-	// unsigned int all_paragraphs = 0;
-
 	// find all lines in original text
 	for (int i = 0; i < size; i++) {
 		if (data[i] == '\n') {
@@ -25,13 +22,10 @@ void find_newlines_and_paragraphs(char *data, int size, int overlap,
 	for (int i = 0; i < overlap; i++) {
 		if (data[size + i] == '\n') {
 			newlines.push_back(size + i);
-			found_new_line = true;
-			// printf("found next newline at %d\n", i);
 			break;
 		}
 	}
 
-	// printf("Start of map: %ld\n", newlines.size());
 	for (int i = 0; i < (int)newlines.size() - 1; i++) {
 		int ind = newlines[i]+1;
 		while (data[ind] == '\t' || data[ind] == ' ') {
@@ -45,24 +39,8 @@ void find_newlines_and_paragraphs(char *data, int size, int overlap,
 			int next_ind = newlines[i+1];
 			paragraph_starts.push_back(ind);
 			paragraph_ends.push_back(next_ind);
-			// if (i == (int)newlines.size() - 2 && found_new_line) {
-				// printf("paragraph found at border between %d and %d\n", ind, next_ind);
-				// for (int j = ind; j < next_ind; j++) {
-					// printf("%c", data[j]);
-				// }
-			// }
 		}
-		// for (int j = newlines[i]+1; j < newlines[i+1]; j++) {
-			// if ((data[j] == '<') 
-			// && (data[j+1] == 'p') && (data[j+2] == '>')) {
-				// all_paragraphs++;
-				// break;
-			// }
-		// }
 	}
-	// if (paragraph_starts.size() != all_paragraphs) {
-		// printf("paragraphs: %ld/%d\n", paragraph_starts.size(), all_paragraphs);
-	// }
 }
 
 inline bool is_separator(char a) {
@@ -79,14 +57,10 @@ inline bool is_letter(char a) {
 		|| (a == '\'' || a == '-');
 }
 
-// Debug
-// #ifdef DEBUG
 #define NON_VALID_WORD 2
 #define TOO_LONG   3
 #define TOO_SHORT 4
 #define SUCCESS 5
-// #endif
-// Debug end
 
 int try_get_word(char *data, std::unordered_map<Word,long> &map, 
 	int s_ind, int e_ind, int &i, Word &w, long &length_counter) {
@@ -182,18 +156,13 @@ void map2(char *data, int size, std::unordered_map<Word,long> &map) {
 	std::cmatch sm;
 	auto words_begin = std::cregex_iterator(data, data + size, r);
 	auto words_end = std::cregex_iterator();
-	// std::cout << "Found " 
-		// << std::distance(words_begin, words_end) 
-		// << " words:\n";
 	for (std::cregex_iterator i = words_begin; i != words_end; ++i) {
 		std::cmatch match = *i;
-		// printf("%lu -> %lu\n", match.position(), match.length());
 		if (match.length() < WORD_SIZE) {
 			Word w;
 			memcpy(w.word, data + match.position(), match.length());
 			w.word[match.length()] = '\0';
 			map[w]++;
-			// printf("%s: %ld\n", w.word, map[w]);
 		}
 	}
 }
@@ -206,9 +175,7 @@ void shuffle(std::unordered_map<Word,long> &map, int size,
     std::hash<Word> word_hasher;
 	for (auto& it: map) {
 		Word w = it.first;
-		// long count = it.second;
 		size_t target_process = word_hasher(w) % size;
-	    // printf("%s: %ld, %lu\n", w.word, count, hash);
 	    out_counts[target_process]++;
 	}
 	// return;
@@ -233,12 +200,8 @@ void shuffle(std::unordered_map<Word,long> &map, int size,
 
 void reduce(Pair *data, int n, std::unordered_map<Word,long> &out_map) {
 	for (int i = 0; i < n; i++) {
-		// printf("test\n");
 		Word w;
-		// printf("test: %s\n", data[i].word);
 		memcpy(w.word, data[i].word, WORD_SIZE);
-		// printf("test\n");
-		// w.word = data[i].word;
 		int count = data[i].count;
 		out_map[w] += count;
 	}
