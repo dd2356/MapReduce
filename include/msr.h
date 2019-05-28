@@ -9,7 +9,18 @@
 struct Word { 
 	char word[WORD_SIZE];
 	bool operator==(const Word &other) const {
-		return strcmp(word, other.word) == 0;
+		bool equal = true;
+		int i = 0;
+		while (equal && word[i] != '\0') {
+			equal &= (word[i] + 32 * (('A' <= word[i]) & (word[i] <= 'Z'))) 
+				== (other.word[i] + 32 * (
+					('A' <= other.word[i]) & (other.word[i] <= 'Z')
+				)
+			);
+			i++;
+		}
+		return equal & (other.word[i] == '\0');
+		// return strcmp(word, other.word) == 0;
 	}
 }; 
 

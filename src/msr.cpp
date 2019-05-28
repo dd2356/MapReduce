@@ -25,6 +25,8 @@ void find_newlines_and_paragraphs(char *data, int size, int overlap,
 			break;
 		}
 	}
+	// TODO: remove bottom part or make new function
+	return;
 
 	for (int i = 0; i < (int)newlines.size() - 1; i++) {
 		int ind = newlines[i]+1;
@@ -68,16 +70,17 @@ int try_get_word(char *data, std::unordered_map<Word,long> &map,
 	int temp_length = 0;
 	bool valid_word = true;
 
-	while (!is_breakpoint(data[i+temp_length])
+	while (is_letter(data[i+temp_length])
 		&& i + temp_length < e_ind && temp_length < WORD_SIZE) {
-		if (!is_letter(data[i+temp_length])) {
-			valid_word = false;
-		}
+		// if (!is_letter(data[i+temp_length])) {
+		// 	valid_word = false;
+		// }
 		temp_length++;
 	}
 	if (valid_word && temp_length < WORD_SIZE && temp_length > 1) {
 		memcpy(w.word, &data[i], temp_length);
 		w.word[temp_length] = '\0';
+		// #pragma omp atomic
 		map[w]++;
 		length_counter += temp_length - 1;
 		if (data[i+temp_length] == '<') {
@@ -106,9 +109,65 @@ void map(char *data, int size, int overlap, std::unordered_map<Word,long> &map) 
 	}
 #endif
 
+	// printf("in map\n");
+	// #pragma omp parallel for
+	for (int i = 0; i < (int)newlines.size()-1; i++) {
+		Word w;
+		// printf("in loop: %d/%d\n", i, newlines.size()-1);
+		int s_ind = newlines[i]+1;
+		int e_ind = newlines[i+1];
+		for (int i = s_ind; i < e_ind; i++) {
+			if (!is_letter(data[i])) {
+				continue;
+			}
+#ifdef DEBUG
+			int success = try_get_word(data, map, s_ind, e_ind, 
+				i, w, total_word_length);
+			non_valid_words += success == NON_VALID_WORD;
+			too_long += success == TOO_LONG;
+			too_short += success == TOO_SHORT;
+			success_words += success == SUCCESS;
+#else
+			// printf("try_get_word\n");
+			try_get_word(data, map, s_ind, e_ind, i, w, total_word_length);				
+#endif
+		}
+	}
+#ifdef DEBUG
+	int total_words = non_valid_words + too_long + too_short + success_words;
+
+	printf("newlines: %ld, paragraphs: %ld, total length: %ld, total word "
+		"length: %ld, nv: %.2f, tl: %.2f, ts: %.2f, success: %.2f\n", 
+		newlines.size(), paragraph_starts.size(), 
+		total_text_length, total_word_length, 
+		non_valid_words / (double)(total_words),
+		too_long / (double)(total_words),
+		too_short / (double)(total_words),
+		success_words / (double)(total_words)
+	);
+#endif
+}
+
+void map2(char *data, int size, int overlap, std::unordered_map<Word,long> &map) { 
+	std::vector<int> newlines, paragraph_starts, paragraph_ends;
+	find_newlines_and_paragraphs(data, size, overlap, 
+		newlines, paragraph_starts, paragraph_ends);
+	long total_word_length = 0; // also debug variable
+#ifdef DEBUG
+	long total_text_length = 0;
+	int non_valid_words = 0;
+	int success_words = 0;
+	int too_long = 0;
+	int too_short = 0;
+	for (unsigned int i = 0; i < paragraph_starts.size(); i++) {
+		total_text_length += paragraph_ends[i] - paragraph_starts[i];
+	}
+#endif
+
 	Word w;
 	bool in_tag = false;
 
+	
 	for (unsigned int i = 0; i < paragraph_starts.size(); i++) {
 		int s_ind = paragraph_starts[i]+2;
 		int e_ind = paragraph_ends[i];
@@ -148,23 +207,6 @@ void map(char *data, int size, int overlap, std::unordered_map<Word,long> &map) 
 		success_words / (double)(total_words)
 	);
 #endif
-}
-
-void map2(char *data, int size, std::unordered_map<Word,long> &map) { 
-
-	std::regex r("\\b\\w+\\b");
-	std::cmatch sm;
-	auto words_begin = std::cregex_iterator(data, data + size, r);
-	auto words_end = std::cregex_iterator();
-	for (std::cregex_iterator i = words_begin; i != words_end; ++i) {
-		std::cmatch match = *i;
-		if (match.length() < WORD_SIZE) {
-			Word w;
-			memcpy(w.word, data + match.position(), match.length());
-			w.word[match.length()] = '\0';
-			map[w]++;
-		}
-	}
 }
 
 

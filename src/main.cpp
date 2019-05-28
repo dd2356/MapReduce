@@ -57,21 +57,21 @@ void mapreduce(int loop_limit, int rank, int size, MPI_File fh, char *buf,
 		if (rank == 0) {
 			printf("\riteration: %d / %d", i+1, loop_limit);
 		}
-		start = clock();
+		start = clock(); /*printf("map\n");*/
 		read(&fh, buf, chunk_size, overlap, i, rank, size, file_size);
 		end = clock(); times[0] += ((double) (end - start)) / CLOCKS_PER_SEC;
-		start = clock();
+		start = clock(); /*printf("map\n");*/
 		std::unordered_map<Word,long> words;
 		map(buf, chunk_size, overlap, words);
 		end = clock(); times[1] += ((double) (end - start)) / CLOCKS_PER_SEC;
-		start = clock();
+		start = clock(); /*printf("map\n");*/
 		Pair *out_data = (Pair*) malloc(words.size() * sizeof(Pair));
 		shuffle(words, size, out_counts, out_offsets, out_data);
 		end = clock(); times[2] += ((double) (end - start)) / CLOCKS_PER_SEC;
-		start = clock();
+		start = clock(); /*printf("map\n");*/
 	    int buff_size = communicate(out_data, out_counts, &recvbuf, size); 
 		end = clock(); times[3] += ((double) (end - start)) / CLOCKS_PER_SEC;
-		start = clock();
+		start = clock(); /*printf("map\n");*/
 		reduce(recvbuf, buff_size, process_map);
 		end = clock(); times[4] += ((double) (end - start)) / CLOCKS_PER_SEC;
 	}
@@ -84,7 +84,7 @@ void mapreduce(int loop_limit, int rank, int size, MPI_File fh, char *buf,
 void recap(int rank, std::unordered_map<Word,long> process_map, double *times) {
 	Word max_word;
 	long max_count = 0;
-	long total_chars = 0;
+	// long total_chars = 0;
 	std::vector<Pair> all_pairs;
 	for (auto& it: process_map) {
 		if (it.second > max_count) {
@@ -95,9 +95,9 @@ void recap(int rank, std::unordered_map<Word,long> process_map, double *times) {
 		memcpy(p.word, it.first.word, WORD_SIZE);
 		p.count = it.second;
 		all_pairs.push_back(p);
-		int len = 0;
-		while (it.first.word[++len] != '\0');
-		total_chars += len * it.second;
+		// int len = 0;
+		// while (it.first.word[++len] != '\0');
+		// total_chars += len * it.second;
 		// printf("%s -> %ld\n", it.first.word, it.second);
 	}
 	// TODO: perform an allgather first, and have 
@@ -116,7 +116,7 @@ void recap(int rank, std::unordered_map<Word,long> process_map, double *times) {
 		"communicate: %.2f, reduce: %.2f\n", 
 		times[0], times[1], times[2], times[3], times[4]
 	);
-	printf("Total chars: %ld\n", total_chars);
+	printf("Words for rank %d: %lu\n", rank, all_pairs.size());
 }
 
 
@@ -152,5 +152,8 @@ int main(int argc, char **argv) {
 		file_size, times, out_counts, out_offsets, process_map);	
 
 	recap(rank, process_map, times);
+	free(buf);
+	free(out_counts);
+	free(out_offsets);
 	MPI_Finalize();
 }
