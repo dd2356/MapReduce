@@ -6,11 +6,8 @@
 #include <omp.h>
 
 // #define DEBUG 
-
-void find_newlines_and_paragraphs(char *data, int size, int overlap,
-	std::vector<int> &newlines, std::vector<int> &paragraph_starts, 
-	std::vector<int> &paragraph_ends) {
-
+void find_newlines(char *data, int size, int overlap, 
+	std::vector<int> &newlines) {
 	// find all lines in original text
 	for (int i = 0; i < size; i++) {
 		if (data[i] == '\n') {
@@ -31,8 +28,13 @@ void find_newlines_and_paragraphs(char *data, int size, int overlap,
 			break;
 		}
 	}
-	// TODO: remove bottom part or make new function
-	return;
+}
+
+void find_newlines_and_paragraphs(char *data, int size, int overlap,
+	std::vector<int> &newlines, std::vector<int> &paragraph_starts, 
+	std::vector<int> &paragraph_ends) {
+
+	find_newlines(data, size, overlap, newlines);
 
 	for (int i = 0; i < (int)newlines.size() - 1; i++) {
 		int ind = newlines[i]+1;
@@ -99,10 +101,10 @@ int try_get_word(char *data, std::unordered_map<Word,long> &map,
 		: NON_VALID_WORD;
 }
 
-void map(char *data, int size, int overlap, std::unordered_map<Word,long> &map) { 
-	std::vector<int> newlines, paragraph_starts, paragraph_ends;
-	find_newlines_and_paragraphs(data, size, overlap, 
-		newlines, paragraph_starts, paragraph_ends);
+void map(char *data, int size, int overlap, std::unordered_map<Word,long> &map) {
+
+	std::vector<int> newlines;
+	find_newlines(data, size, overlap, newlines);
 	long total_word_length = 0; // also debug variable
 #ifdef DEBUG
 	long total_text_length = 0;
@@ -244,6 +246,7 @@ void shuffle(std::unordered_map<Word,long> &map, int size,
 	    temp_counts[target_process]++;
 	    out_data[index] = p;
 	}
+	free(temp_counts);
 }
 
 void reduce(Pair *data, int n, std::unordered_map<Word,long> &out_map) {
