@@ -6,10 +6,12 @@
 #include <stdlib.h>
 #include <mpi.h>
 
+// #define DEBUG
+
 void read(MPI_File *fh, char *buf, MPI_Offset chunk_size, 
 	MPI_Offset overlap, int iteration, int rank, int size, 
     MPI_Offset file_size) {
-	
+
 	MPI_Offset offset = (iteration * size + rank) * chunk_size;
 
 	file_size--;  // get rid of text file eof
@@ -48,29 +50,60 @@ void define_pair_type(MPI_Datatype *type)  {
     MPI_Datatype pair_types[2] = {MPI_LONG,MPI_CHAR}; 
     int blocklen[2] = {1, WORD_SIZE}; 
     
-    MPI_Type_create_struct(2,blocklen, pair_displacements, pair_types, &pair_tmp_type); 
+    MPI_Type_create_struct(2,blocklen, pair_displacements, pair_types, &pair_tmp_type);
     MPI_Type_get_extent(pair_tmp_type, &lb, &extent); 
     MPI_Type_create_resized(pair_tmp_type, lb, extent, type); 
     MPI_Type_commit(type); 
 }
 
-int communicate(Pair *sendbuf, int *sendcounts, Pair **recvbuf, int n) {
-    MPI_Comm comm = MPI_COMM_WORLD; 
-    /* populate recvcounts*/ 
-    int recvcounts[n]; 
-    MPI_Alltoall(sendcounts, 1, MPI_INT, recvcounts, 1, MPI_INT, comm); 
-    /* calculate offsets */ 
-    int sdispl[n], rdispl[n];
-    displacement(sendcounts,     sdispl, n); 
-    displacement(recvcounts,     rdispl, n); 
-    /* allocate recvbuf */
-    int size = sum(recvcounts, n); 
-    (*recvbuf) = (Pair*)malloc(sizeof(Pair) * size);
-    /* create custom type */ 
-    MPI_Datatype pair_type; 
-    define_pair_type(&pair_type); 
+int communicate(Pair **sendbuf, int **sendcounts, int **sdispl, 
+    int **recvcounts, int **recvdispls, MPI_Request *requests, 
+    MPI_Request *all_to_all_requests, int idx, int all_to_all_idx, 
+    Pair **recvbuf, int n, bool send_counts, int rank) {
 
-    MPI_Alltoallv(sendbuf, sendcounts, sdispl, pair_type, 
-        *recvbuf, recvcounts, rdispl, pair_type, comm);
-    return size; 
+    MPI_Comm comm = MPI_COMM_WORLD; 
+    if (send_counts) {
+#ifdef DEBUG
+        printf("communicating sizes on %d from buffer %d ([%d, %d])\n", 
+            rank, idx, sendcounts[idx][0], sendcounts[idx][1]);
+#endif
+        MPI_Ialltoall(sendcounts[idx], 1, MPI_INT, 
+            recvcounts[idx], 1, MPI_INT, comm, &requests[idx]);
+    }
+    if (all_to_all_idx != -1) {
+        int i = all_to_all_idx;
+        MPI_Wait(&requests[i], MPI_STATUS_IGNORE);
+
+        displacement(recvcounts[i], recvdispls[i], n);
+        /* allocate recvbuf */
+        int size = sum(recvcounts[i], n); 
+        free(recvbuf[i]);
+        recvbuf[i] = (Pair*)malloc(sizeof(Pair) * size);
+
+        /* create custom type */ 
+        MPI_Datatype pair_type; 
+        define_pair_type(&pair_type); 
+        int completed = 0;
+        if (i > 0) {
+            MPI_Test(
+                &all_to_all_requests[i-1],
+                &completed,
+                MPI_STATUS_IGNORE
+            );
+        }
+#ifdef DEBUG
+        printf("sending words on %d with buffer "
+            "%d (%d, [%d, %d], [%d, %d]) ([%d, %d], [%d, %d]) %d\n", 
+            rank, i, size, sendcounts[i][0], sendcounts[i][1], sdispl[i][0], sdispl[i][1],
+            recvcounts[i][0], recvcounts[i][1], recvdispls[i][0], recvdispls[i][1], completed);
+#endif
+        MPI_Ialltoallv(sendbuf[i], sendcounts[i], sdispl[i], pair_type, 
+            recvbuf[i], recvcounts[i], recvdispls[i], pair_type, 
+            comm, &all_to_all_requests[i]);
+#ifdef DEBUG
+        printf("communication done on %d\n", rank);
+#endif
+        return size;
+    }
+    return 0; 
 }
