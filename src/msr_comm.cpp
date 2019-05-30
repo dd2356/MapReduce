@@ -79,13 +79,22 @@ int communicate(Pair **sendbuf, int **sendcounts, int **sdispl,
         /* create custom type */ 
         MPI_Datatype pair_type; 
         define_pair_type(&pair_type); 
+        int completed = 0;
+        if (i > 0) {
+            MPI_Test(
+                &all_to_all_requests[i-1],
+                &completed,
+                MPI_STATUS_IGNORE
+            );
+        }
         printf("sending words on %d with buffer "
-            "%d (%d, [%d, %d], [%d, %d]) ([%d, %d], [%d, %d])\n", 
+            "%d (%d, [%d, %d], [%d, %d]) ([%d, %d], [%d, %d]) %d\n", 
             rank, i, size, sendcounts[i][0], sendcounts[i][1], sdispl[i][0], sdispl[i][1],
-            recvcounts[i][0], recvcounts[i][1], recvdispls[i][0], recvdispls[i][1]);
+            recvcounts[i][0], recvcounts[i][1], recvdispls[i][0], recvdispls[i][1], completed);
         MPI_Ialltoallv(sendbuf[i], sendcounts[i], sdispl[i], pair_type, 
             recvbuf[i], recvcounts[i], recvdispls[i], pair_type, 
             comm, &all_to_all_requests[i]);
+        printf("communication done on %d\n", rank);
         return size;
     }
     return 0; 
