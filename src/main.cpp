@@ -67,13 +67,13 @@ void cleanup_reduce(int loop_limit, int buffers, Pair **out_data,
 	int last_2 = (loop_limit-2) % buffers;
 
 	start = clock();
-    int buff_size = communicate(out_data, out_counts, out_offsets, 
-    	recv_counts, recv_offsets, requests, all_to_all_requests, 
-    	idx, last, receive_buffer, size, false, rank); 
+	int buff_size = communicate(out_data, out_counts, out_offsets, 
+		recv_counts, recv_offsets, requests, all_to_all_requests, 
+		idx, last, receive_buffer, size, false, rank); 
 
-    if (loop_limit > 0) {
-	    buff_sizes[last] = buff_size;
-    }
+	if (loop_limit > 0) {
+		buff_sizes[last] = buff_size;
+	}
 	end = clock(); times[3] += ((double) (end - start)) / CLOCKS_PER_SEC;
 
 	start = clock();
@@ -138,17 +138,18 @@ void mapreduce(int loop_limit, int rank, int size, MPI_File fh, char **buf,
 		start = clock();
 		free(out_data[idx]);
 		out_data[idx] = (Pair*) malloc(words.size() * sizeof(Pair));
+		printf("shuffling on rank %d using buffer %d\n", rank, idx);
 		shuffle(words, size, out_counts[idx], out_offsets[idx], out_data[idx]);
 		end = clock(); times[2] += ((double) (end - start)) / CLOCKS_PER_SEC;
 		// printf("communicate\n");
 		start = clock(); 
-	    int buff_size = communicate(out_data, out_counts, out_offsets, 
-	    	recv_counts, recv_offsets, requests, all_to_all_requests, 
-	    	idx, last, receive_buffer, size, true, rank); 
+		int buff_size = communicate(out_data, out_counts, out_offsets, 
+			recv_counts, recv_offsets, requests, all_to_all_requests, 
+			idx, last, receive_buffer, size, true, rank); 
 
-	    if (i > 0) {
-		    buff_sizes[last] = buff_size;
-	    }
+		if (i > 0) {
+			buff_sizes[last] = buff_size;
+		}
 		end = clock(); times[3] += ((double) (end - start)) / CLOCKS_PER_SEC;
 
 		if (i > 1) {
@@ -164,6 +165,7 @@ void mapreduce(int loop_limit, int rank, int size, MPI_File fh, char **buf,
 		printf("reached barrier on %d\n", rank);
 		MPI_Barrier(MPI_COMM_WORLD);
 		printf("exited barrier on %d\n", rank);
+		sleep(1);
 		if (rank == 0) {
 			printf("\n");
 		}
