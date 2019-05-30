@@ -163,6 +163,7 @@ void mapreduce(int loop_limit, int rank, int size, MPI_File fh, char **buf,
 		}
 		printf("reached barrier on %d\n", rank);
 		MPI_Barrier(MPI_COMM_WORLD);
+		printf("exited barrier on %d\n", rank);
 		if (rank == 0) {
 			printf("\n");
 		}
