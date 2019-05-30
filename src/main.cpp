@@ -81,11 +81,12 @@ void mapreduce(int loop_limit, int rank, int size, MPI_File fh, char *buf,
 
 }
 
-void recap(int rank, std::unordered_map<Word,long> process_map, double *times) {
+void recap(int rank, int world_size, std::unordered_map<Word,long> process_map, double *times) {
+    printf("Enter: %d\n", rank);
 	Word max_word;
 	long max_count = 0;
-	long total_chars = 0;
-	std::vector<Pair> all_pairs;
+	long total_local_chars = 0;
+	std::vector<Pair> local_pairs;
 	for (auto& it: process_map) {
 		if (it.second > max_count) {
 			max_count = it.second;
@@ -94,29 +95,78 @@ void recap(int rank, std::unordered_map<Word,long> process_map, double *times) {
 		Pair p;
 		memcpy(p.word, it.first.word, WORD_SIZE);
 		p.count = it.second;
-		all_pairs.push_back(p);
+		local_pairs.push_back(p);
 		int len = 0;
 		while (it.first.word[++len] != '\0');
-		total_chars += len * it.second;
+		total_local_chars += len * it.second;
 		// printf("%s -> %ld\n", it.first.word, it.second);
 	}
 	// TODO: perform an allgather first, and have 
 	// root process write to file after sorting words
-	std::sort(all_pairs.begin(), all_pairs.end(), sort_words);
-	usleep (10000 * rank);
-	int top_10 = all_pairs.size() < 10 ? all_pairs.size() : 10;
-	for (int i = 0; i < top_10; i++) {
-		printf("Rank %d, top %d: %s -> %ld\n", 
-			rank, i, all_pairs[i].word, all_pairs[i].count);
-	}
 
-	usleep(100000);
-	usleep(10000 * rank);
-	printf("times: read: %.2f, map: %.2f, shuffle: %.2f, "
-		"communicate: %.2f, reduce: %.2f\n", 
-		times[0], times[1], times[2], times[3], times[4]
-	);
-	printf("Total chars: %ld\n", total_chars);
+    // Gather the times
+    double total_times[5]; 
+    total_times[0] = total_times[1] = total_times[2] = total_times[3] = total_times[4] = 0; 
+    double *t_recvbuf; 
+    if (rank == 0) t_recvbuf = (double*) malloc(sizeof(double) * world_size * 5); 
+    MPI_Gather(times, 5, MPI_DOUBLE, t_recvbuf, 5, MPI_DOUBLE, 0, MPI_COMM_WORLD); 
+    if (rank == 0) { 
+        for (int i = 0; i < world_size * 5; i+=5) { 
+            total_times[0] += t_recvbuf[i]; 
+            total_times[1] += t_recvbuf[i+1]; 
+            total_times[2] += t_recvbuf[i+2]; 
+            total_times[3] += t_recvbuf[i+3]; 
+            total_times[4] += t_recvbuf[i+4]; 
+        }
+    }
+    if (rank == 0) free(t_recvbuf); 
+
+    // Gather the total chars 
+    long total_chars = 0; 
+    long tc_recvbuf[world_size]; 
+    MPI_Gather(&total_local_chars, 1, MPI_LONG, tc_recvbuf, 1, MPI_LONG, 0, MPI_COMM_WORLD); 
+    
+    if (rank == 0) { 
+      for (int i = 0; i < world_size; i++) total_chars += tc_recvbuf[i];    
+    }
+
+    // Gather the size of the pair arrays
+    int *recvcounts; 
+    int local_size = local_pairs.size(); 
+    if (rank == 0) recvcounts = (int*) malloc(sizeof(int) * world_size); 
+    MPI_Gather(&local_size, 1, MPI_INT, recvcounts, 1, MPI_INT, 0, MPI_COMM_WORLD); 
+
+    // Gather all pairs
+    int displs[world_size]; 
+    displacement(recvcounts, displs, world_size);  
+    int recvcount = sum(recvcounts, world_size); 
+    MPI_Datatype datatype; 
+    define_pair_type(&datatype);  
+    Pair *recvbuf; 
+    if (rank == 0) recvbuf = (Pair*) malloc(sizeof(Pair) * recvcount); 
+    MPI_Gatherv(local_pairs.data(), local_size, datatype, recvbuf, recvcounts, displs, datatype, 0, MPI_COMM_WORLD); 
+    
+    if (rank == 0) free(recvcounts); 
+
+    if (rank == 0) { 
+        // Init a vector from the buffer
+        std::vector<Pair> all_pairs(recvbuf, recvbuf + recvcount); 
+        std::sort(all_pairs.begin(), all_pairs.end(), sort_words);
+
+        int top_10 = all_pairs.size() < 10 ? all_pairs.size() : 10;
+        for (int i = 0; i < top_10; i++) {
+            printf("Rank %d, top %d: %s -> %ld\n", 
+                    rank, i, all_pairs[i].word, all_pairs[i].count);
+        }
+
+        printf("times: read: %.2f, map: %.2f, shuffle: %.2f, "
+                "communicate: %.2f, reduce: %.2f\n", 
+                total_times[0], total_times[1], total_times[2], total_times[3], total_times[4]
+              );
+        printf("Total chars: %ld\n", total_chars);
+        free (recvbuf); 
+    }
+    printf("Done: %d\n", rank);
 }
 
 
@@ -146,11 +196,11 @@ int main(int argc, char **argv) {
 	open_file_with_view(fh, rank, size, chunk_size, argv[1], file_size);
 	setup_buffers_and_variables(chunk_size, overlap, buffer_size, 
 		&buf, &out_counts, &out_offsets, 
-	size, file_size, loop_limit, &times);
+	    size, file_size, loop_limit, &times);
 
 	mapreduce(loop_limit, rank, size, fh, buf, chunk_size, overlap, 
 		file_size, times, out_counts, out_offsets, process_map);	
 
-	recap(rank, process_map, times);
+	recap(rank, size, process_map, times);
 	MPI_Finalize();
 }
