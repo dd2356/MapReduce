@@ -57,22 +57,17 @@ void define_pair_type(MPI_Datatype *type)  {
 int communicate(Pair **sendbuf, int **sendcounts, int **sdispl, 
     int **recvcounts, int **recvdispls, MPI_Request *requests, 
     MPI_Request *all_to_all_requests, int idx, int all_to_all_idx, 
-    Pair **recvbuf, int n, bool send_counts) {
+    Pair **recvbuf, int n, bool send_counts, int rank) {
 
     MPI_Comm comm = MPI_COMM_WORLD; 
     if (send_counts) {
-        if (requests[idx] != -1) {
-            MPI_Wait(&requests[idx], MPI_STATUS_IGNORE);
-        }
-        /* populate recvcounts*/ 
+        printf("communicating sizes on %d from buffer %d ([%d, %d])\n", 
+            rank, idx, sendcounts[idx][0], sendcounts[idx][1]);
         MPI_Ialltoall(sendcounts[idx], 1, MPI_INT, 
             recvcounts[idx], 1, MPI_INT, comm, &requests[idx]);
     }
     if (all_to_all_idx != -1) {
         int i = all_to_all_idx;
-        if (all_to_all_requests[i] != -1) {
-            MPI_Wait(&all_to_all_requests[i], MPI_STATUS_IGNORE);
-        }
         MPI_Wait(&requests[i], MPI_STATUS_IGNORE);
 
         displacement(recvcounts[i], recvdispls[i], n);
@@ -84,7 +79,10 @@ int communicate(Pair **sendbuf, int **sendcounts, int **sdispl,
         /* create custom type */ 
         MPI_Datatype pair_type; 
         define_pair_type(&pair_type); 
-
+        printf("sending words on %d with buffer "
+            "%d (%d, [%d, %d], [%d, %d]) ([%d, %d], [%d, %d])\n", 
+            rank, i, size, sendcounts[i][0], sendcounts[i][1], sdispl[i][0], sdispl[i][1],
+            recvcounts[i][0], recvcounts[i][1], recvdispls[i][0], recvdispls[i][1]);
         MPI_Ialltoallv(sendbuf[i], sendcounts[i], sdispl[i], pair_type, 
             recvbuf[i], recvcounts[i], recvdispls[i], pair_type, 
             comm, &all_to_all_requests[i]);

@@ -59,7 +59,7 @@ void cleanup_reduce(int loop_limit, int buffers, Pair **out_data,
 	int **out_counts, int **out_offsets, int **recv_counts, int **recv_offsets, 
 	MPI_Request *requests, MPI_Request *all_to_all_requests, 
 	Pair **receive_buffer, int size, int *buff_sizes, double *times,
-	std::unordered_map<Word,long> &process_map) {
+	std::unordered_map<Word,long> &process_map, int rank) {
 
 	clock_t start, end;
 	int idx = loop_limit % buffers;
@@ -69,7 +69,7 @@ void cleanup_reduce(int loop_limit, int buffers, Pair **out_data,
 	start = clock();
     int buff_size = communicate(out_data, out_counts, out_offsets, 
     	recv_counts, recv_offsets, requests, all_to_all_requests, 
-    	idx, last, receive_buffer, size, false); 
+    	idx, last, receive_buffer, size, false, rank); 
 
     if (loop_limit > 0) {
 	    buff_sizes[last] = buff_size;
@@ -106,8 +106,8 @@ void mapreduce(int loop_limit, int rank, int size, MPI_File fh, char **buf,
 	int **recv_offsets = (int**)malloc(buffers * sizeof(int*));
 	int *buff_sizes = (int*)malloc(buffers * sizeof(int));
 	for (int i = 0; i < buffers; i++) {
-		out_data[i] = (Pair*)malloc(1 * sizeof(Pair));
-		receive_buffer[i] = (Pair*)malloc(1 * sizeof(Pair));
+		out_data[i] = NULL;
+		receive_buffer[i] = NULL;
 		recv_counts[i] = (int*)malloc(size * sizeof(int));
 		recv_offsets[i] = (int*)malloc(size * sizeof(int));
 	}
@@ -115,19 +115,24 @@ void mapreduce(int loop_limit, int rank, int size, MPI_File fh, char **buf,
 	int idx, last, last_2;
 	for (int i = 0; i < loop_limit; i++) {
 		if (rank == 0) {
-			printf("\riteration: %d / %d\t", i+1, loop_limit);
+			printf("\riteration: %d / %d\t\n", i+1, loop_limit);
 		}
+
 		idx = i % buffers;
 		last = (i-1) % buffers;
 		last_2 = (i-2) % buffers;
-		// printf("read\n");
+		// printf("read: %d\n", rank);
 		start = clock();
 		read(&fh, buf[idx], chunk_size, overlap, i, rank, size, file_size);
+		// if (rank == 1) {
+			// sleep(1);
+		// }
 		end = clock(); times[0] += ((double) (end - start)) / CLOCKS_PER_SEC;
 		// printf("map\n");
 		start = clock();
 		std::unordered_map<Word,long> words;
 		map(buf[idx], chunk_size, overlap, words);
+		printf("mapped %lu words on process %d\n", words.size(), rank);
 		end = clock(); times[1] += ((double) (end - start)) / CLOCKS_PER_SEC;
 		// printf("shuffle\n");
 		start = clock();
@@ -139,7 +144,7 @@ void mapreduce(int loop_limit, int rank, int size, MPI_File fh, char **buf,
 		start = clock(); 
 	    int buff_size = communicate(out_data, out_counts, out_offsets, 
 	    	recv_counts, recv_offsets, requests, all_to_all_requests, 
-	    	idx, last, receive_buffer, size, true); 
+	    	idx, last, receive_buffer, size, true, rank); 
 
 	    if (i > 0) {
 		    buff_sizes[last] = buff_size;
@@ -148,9 +153,10 @@ void mapreduce(int loop_limit, int rank, int size, MPI_File fh, char **buf,
 
 		if (i > 1) {
 			start = clock();
+			printf("waiting for MPI_Ialltoallv of buffer %d\n", last_2), 
 			MPI_Wait(&all_to_all_requests[last_2], MPI_STATUS_IGNORE);
 			end = clock(); times[4] += ((double) (end - start)) / CLOCKS_PER_SEC;
-			// printf("reduce\n");
+			printf("reducing %d with %d words\n", rank, buff_sizes[last_2]);
 			start = clock();
 			reduce(receive_buffer[last_2], buff_sizes[last_2], process_map);
 			end = clock(); times[5] += ((double) (end - start)) / CLOCKS_PER_SEC;
@@ -159,7 +165,7 @@ void mapreduce(int loop_limit, int rank, int size, MPI_File fh, char **buf,
 
 	cleanup_reduce(loop_limit, buffers, out_data, out_counts, out_offsets, 
 		recv_counts, recv_offsets, requests, all_to_all_requests, 
-		receive_buffer, size, buff_sizes, times, process_map);
+		receive_buffer, size, buff_sizes, times, process_map, rank);
 
 	if (rank == 0) {
 		printf("\n");
