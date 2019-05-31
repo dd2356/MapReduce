@@ -160,10 +160,10 @@ void mapreduce(int loop_limit, int rank, int size, MPI_File fh, char **buf,
 			reduce(receive_buffer[last_2], buff_sizes[last_2], process_map);
 			end = clock(); times[5] += ((double) (end - start)) / CLOCKS_PER_SEC;
 		}
-		printf("reached barrier on %d\n", rank);
-		MPI_Barrier(MPI_COMM_WORLD);
-		printf("exited barrier on %d\n", rank);
-		sleep(1);
+		// printf("reached barrier on %d\n", rank);
+		// MPI_Barrier(MPI_COMM_WORLD);
+		// printf("exited barrier on %d\n", rank);
+		// sleep(1);
 		if (rank == 0) {
 			printf("\n");
 		}
