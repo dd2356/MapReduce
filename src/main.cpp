@@ -232,11 +232,13 @@ int main(int argc, char **argv) {
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+	printf("I am %d / %d\n", rank, size);
+	return 0;
 	if (argc != 2) {
 		if (rank == 0) {
 			printf("Usage: %s <input_filename>", argv[0]);
 		}
-		exit(1);
+		exit(0);
 	}
 
 	open_file_with_view(fh, rank, size, chunk_size, argv[1], file_size);
