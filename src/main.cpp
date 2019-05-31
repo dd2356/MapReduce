@@ -64,6 +64,7 @@ void mapreduce(int loop_limit, int rank, int size, MPI_File fh, char *buf,
 		std::unordered_map<Word,long> words;
 		map(buf, chunk_size, overlap, words);
 		end = clock(); times[1] += ((double) (end - start)) / CLOCKS_PER_SEC;
+		printf("found %lu words on %d\n", words.size(), rank);
 		start = clock();
 		Pair *out_data = (Pair*) malloc(words.size() * sizeof(Pair));
 		shuffle(words, size, out_counts, out_offsets, out_data);
@@ -101,6 +102,7 @@ void recap(int rank, int world_size, std::unordered_map<Word,long> process_map, 
 		total_local_chars += len * it.second;
 		// printf("%s -> %ld\n", it.first.word, it.second);
 	}
+	printf("total chars on %d: %ld\n", rank, total_local_chars);
 	// TODO: perform an allgather first, and have 
 	// root process write to file after sorting words
 
@@ -133,8 +135,15 @@ void recap(int rank, int world_size, std::unordered_map<Word,long> process_map, 
     // Gather the size of the pair arrays
     int *recvcounts; 
     int local_size = local_pairs.size(); 
-    if (rank == 0) recvcounts = (int*) malloc(sizeof(int) * world_size); 
+    if (rank == 0) {
+    	recvcounts = (int*) malloc(sizeof(int) * world_size); 
+    }
     MPI_Gather(&local_size, 1, MPI_INT, recvcounts, 1, MPI_INT, 0, MPI_COMM_WORLD); 
+    if (rank == 0) {
+    	for (int i = 0; i < world_size; ++i) {
+    		printf("sizes: %d\n", local_size);
+    	}
+    }
 
     // Gather all pairs
     int displs[world_size]; 
@@ -146,8 +155,9 @@ void recap(int rank, int world_size, std::unordered_map<Word,long> process_map, 
     if (rank == 0) recvbuf = (Pair*) malloc(sizeof(Pair) * recvcount); 
     MPI_Gatherv(local_pairs.data(), local_size, datatype, recvbuf, recvcounts, displs, datatype, 0, MPI_COMM_WORLD); 
     
-    if (rank == 0) free(recvcounts); 
-
+    if (rank == 0) {
+    	free(recvcounts); 
+    }
     if (rank == 0) { 
         // Init a vector from the buffer
         std::vector<Pair> all_pairs(recvbuf, recvbuf + recvcount); 
@@ -185,7 +195,6 @@ int main(int argc, char **argv) {
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
-
 	if (argc != 2) {
 		if (rank == 0) {
 			printf("Usage: %s <input_filename>", argv[0]);

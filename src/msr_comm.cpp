@@ -21,8 +21,13 @@ void read(MPI_File *fh, char *buf, MPI_Offset chunk_size,
 		chunk_size = file_size - offset;
 		overlap = 0;
 	}
+    printf("reading %lld chars on rank %d\n", chunk_size, rank);
     MPI_File_read_all(*fh, buf, chunk_size, MPI_CHAR, MPI_STATUS_IGNORE);
 	buf[chunk_size + overlap] = '\0';
+    char temp[41];
+    memcpy(temp, buf, 40);
+    temp[40] = '\0';
+    printf("%s\n", temp);
 }
 
 void displacement(int *src, int *dst, int size) {

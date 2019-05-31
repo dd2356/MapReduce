@@ -16,12 +16,18 @@ void find_newlines_and_paragraphs(char *data, int size, int overlap,
 		if (data[i] == '\n') {
 			newlines.push_back(i);
 		}
+		if (data[i] == '\0') {
+			break;
+		}
 	}
 
 	// find first newline in overlap region
 	for (int i = 0; i < overlap; i++) {
 		if (data[size + i] == '\n') {
 			newlines.push_back(size + i);
+			break;
+		}
+		if (data[size + i] == '\0') {
 			break;
 		}
 	}
