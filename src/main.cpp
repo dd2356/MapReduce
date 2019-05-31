@@ -47,8 +47,6 @@ void setup_buffers_and_variables(MPI_Offset chunk_size, MPI_Offset overlap,
 		(*buf)[i] = (char*) malloc(buffer_size * sizeof(char));
 		(*out_counts)[i] = (int*) malloc(size * sizeof(int));
 		(*out_offsets)[i] = (int*) malloc(size * sizeof(int));
-		(*requests)[i] = -1;
-		(*all_to_all_requests)[i] = -1;
 	}
 	loop_limit = file_size / chunk_size / size;
 	loop_limit += (loop_limit * chunk_size * size < file_size);
