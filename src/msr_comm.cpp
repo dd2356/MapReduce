@@ -9,8 +9,8 @@
 // #define DEBUG
 
 void read(MPI_File *fh, char *buf, MPI_Offset chunk_size, 
-	MPI_Offset overlap, int iteration, int rank, int size, 
-    MPI_Offset file_size) {
+	MPI_Offset overlap, int iteration, int buffer_idx, int rank, int size, 
+    MPI_Offset file_size, MPI_Request *file_requests) {
 
 	MPI_Offset offset = (iteration * size + rank) * chunk_size;
 
@@ -23,7 +23,7 @@ void read(MPI_File *fh, char *buf, MPI_Offset chunk_size,
 		chunk_size = file_size - offset;
 		overlap = 0;
 	}
-    MPI_File_read_all(*fh, buf, chunk_size, MPI_CHAR, MPI_STATUS_IGNORE);
+    MPI_File_iread_all(*fh, buf, chunk_size, MPI_CHAR, &file_requests[buffer_idx]);
 	buf[chunk_size + overlap] = '\0';
 }
 
@@ -83,6 +83,7 @@ int communicate(Pair **sendbuf, int **sendcounts, int **sdispl,
         /* create custom type */ 
         MPI_Datatype pair_type; 
         define_pair_type(&pair_type); 
+#ifdef DEBUG
         int completed = 0;
         if (i > 0) {
             MPI_Test(
@@ -91,7 +92,6 @@ int communicate(Pair **sendbuf, int **sendcounts, int **sdispl,
                 MPI_STATUS_IGNORE
             );
         }
-#ifdef DEBUG
         printf("sending words on %d with buffer "
             "%d (%d, [%d, %d], [%d, %d]) ([%d, %d], [%d, %d]) %d\n", 
             rank, i, size, sendcounts[i][0], sendcounts[i][1], sdispl[i][0], sdispl[i][1],
