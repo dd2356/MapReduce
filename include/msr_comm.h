@@ -6,7 +6,8 @@
 #include <stdlib.h>
 
 void read(MPI_File *fh, char *buf, MPI_Offset chunk_size, 
-	MPI_Offset overlap, int iteration, int rank, int size, MPI_Offset file_size);
+	MPI_Offset overlap, int iteration, int buffer_idx, int rank, int size, 
+    MPI_Offset file_size, MPI_Request *file_requests);
 
 void displacement(int *src, int *dst, int size);
 void define_pair_type(MPI_Datatype *type);
