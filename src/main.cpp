@@ -238,9 +238,9 @@ void recap(int rank, std::unordered_map<Word,long> process_map, double *times) {
 	usleep(100000);
 	usleep(10000 * rank);
 // #ifdef DEBUG
-	printf("times for process %d (%lu words)\nread: %.2f\tread wait: %.2f"
-		"\tmap: %.2f\tshuffle: %.2f\tcommunicate: %.2f\treduce wait: %.2f"
-		"\treduce: %.2f\n", 
+	printf("times for process %d (%lu words)\nread: %6.2f\tread wait: %6.2f"
+		"\tmap: %6.2f\tshuffle: %6.2f\tcommunicate: %6.2f\treduce wait: %6.2f"
+		"\treduce: %6.2f\n", 
 		rank, all_pairs.size(),
 		times[0], times[1], times[2], times[3], times[4], times[5], times[6]
 	);
