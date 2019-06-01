@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 void read(MPI_File *fh, char *buf, MPI_Offset chunk_size, 
-	MPI_Offset overlap, int iteration, int rank, int size, MPI_Offset file_size);
+	MPI_Offset overlap, int iteration, int buffer_idx, int rank, int size, 
+    MPI_Offset file_size, MPI_Request *file_requests);
 int communicate(Pair **sendbuf, int **sendcounts, int **sdispl, int **recvcounts, int **recvdispls, 
     MPI_Request *requests, MPI_Request *all_to_all_requests, int idx, int all_to_all_idx, Pair **recvbuf, int n, bool send_counts, int rank);
