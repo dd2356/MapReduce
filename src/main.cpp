@@ -9,6 +9,8 @@
 #include <vector>
 #include <algorithm>
 
+// #define DEBUG
+
 // descending sort
 bool sort_words(Pair p1, Pair p2) {
 	return p1.count > p2.count;
@@ -113,33 +115,46 @@ void mapreduce(int loop_limit, int rank, int size, MPI_File fh, char **buf,
 	int idx, last, last_2;
 	for (int i = 0; i < loop_limit; i++) {
 		if (rank == 0) {
+#ifdef DEBUG
 			printf("\riteration: %d / %d\t\n", i+1, loop_limit);
+#else
+			printf("\riteration: %d / %d\t", i+1, loop_limit);
+#endif
 		}
 
 		idx = i % buffers;
 		last = (i-1) % buffers;
 		last_2 = (i-2) % buffers;
-		// printf("read: %d\n", rank);
+#ifdef DEBUG
+		printf("read: %d\n", rank);
+#endif
 		start = clock();
 		read(&fh, buf[idx], chunk_size, overlap, i, rank, size, file_size);
-		// if (rank == 1) {
-			// sleep(1);
-		// }
 		end = clock(); times[0] += ((double) (end - start)) / CLOCKS_PER_SEC;
-		// printf("map\n");
+#ifdef DEBUG
+		printf("map\n");
+#endif
 		start = clock();
 		std::unordered_map<Word,long> words;
 		map(buf[idx], chunk_size, overlap, words);
+#ifdef DEBUG
 		printf("mapped %lu words on process %d\n", words.size(), rank);
+#endif
 		end = clock(); times[1] += ((double) (end - start)) / CLOCKS_PER_SEC;
-		// printf("shuffle\n");
+#ifdef DEBUG
+		printf("shuffle\n");
+#endif
 		start = clock();
 		free(out_data[idx]);
 		out_data[idx] = (Pair*) malloc(words.size() * sizeof(Pair));
+#ifdef DEBUG
 		printf("shuffling on rank %d using buffer %d\n", rank, idx);
+#endif
 		shuffle(words, size, out_counts[idx], out_offsets[idx], out_data[idx]);
 		end = clock(); times[2] += ((double) (end - start)) / CLOCKS_PER_SEC;
-		// printf("communicate\n");
+#ifdef DEBUG
+		printf("communicate\n");
+#endif
 		start = clock(); 
 		int buff_size = communicate(out_data, out_counts, out_offsets, 
 			recv_counts, recv_offsets, requests, all_to_all_requests, 
@@ -152,21 +167,23 @@ void mapreduce(int loop_limit, int rank, int size, MPI_File fh, char **buf,
 
 		if (i > 1) {
 			start = clock();
+#ifdef DEBUG
 			printf("waiting for MPI_Ialltoallv of buffer %d\n", last_2), 
+#endif
 			MPI_Wait(&all_to_all_requests[last_2], MPI_STATUS_IGNORE);
 			end = clock(); times[4] += ((double) (end - start)) / CLOCKS_PER_SEC;
+#ifdef DEBUG
 			printf("reducing %d with %d words\n", rank, buff_sizes[last_2]);
+#endif
 			start = clock();
 			reduce(receive_buffer[last_2], buff_sizes[last_2], process_map);
 			end = clock(); times[5] += ((double) (end - start)) / CLOCKS_PER_SEC;
 		}
-		// printf("reached barrier on %d\n", rank);
-		// MPI_Barrier(MPI_COMM_WORLD);
-		// printf("exited barrier on %d\n", rank);
-		// sleep(1);
+#ifdef DEBUG
 		if (rank == 0) {
 			printf("\n");
 		}
+#endif
 	}
 
 	cleanup_reduce(loop_limit, buffers, out_data, out_counts, out_offsets, 
@@ -174,7 +191,10 @@ void mapreduce(int loop_limit, int rank, int size, MPI_File fh, char **buf,
 		receive_buffer, size, buff_sizes, times, process_map, rank);
 
 	if (rank == 0) {
+#ifdef DEBUG
+
 		printf("\n");
+#endif
 	}
 
 }
@@ -202,17 +222,21 @@ void recap(int rank, std::unordered_map<Word,long> process_map, double *times) {
 	usleep (10000 * rank);
 	int top_10 = all_pairs.size() < 10 ? all_pairs.size() : 10;
 	for (int i = 0; i < top_10; i++) {
+#ifdef DEBUG
 		printf("Rank %d, top %2d: %s -> %ld\n", 
 			rank, i+1, all_pairs[i].word, all_pairs[i].count);
+#endif
 	}
 
 	usleep(100000);
 	usleep(10000 * rank);
+#ifdef DEBUG
 	printf("times for process %d (%lu words)\nread: %.2f\tmap: %.2f\t"
 		"shuffle: %.2f\tcommunicate: %.2f\treduce wait: %.2f\treduce: %.2f\n", 
 		rank, all_pairs.size(),
 		times[0], times[1], times[2], times[3], times[4], times[5]
 	);
+#endif
 }
 
 int main(int argc, char **argv) {
@@ -225,7 +249,7 @@ int main(int argc, char **argv) {
 	MPI_Request *requests, *all_to_all_requests;
 	std::unordered_map<Word,long> process_map;
 	double *times;
-	chunk_size = 64 << 20; // 64 MB
+	chunk_size = 64 << 20	; // 64 MB
 	overlap = 0 << 20; // 2 MB
 
 	MPI_Init(&argc, &argv);
@@ -234,7 +258,10 @@ int main(int argc, char **argv) {
 
 	if (argc != 2) {
 		if (rank == 0) {
+#ifdef DEBUG
+
 			printf("Usage: %s <input_filename>", argv[0]);
+#endif
 		}
 		exit(0);
 	}

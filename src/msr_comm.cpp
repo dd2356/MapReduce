@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <mpi.h>
 
+// #define DEBUG
+
 void read(MPI_File *fh, char *buf, MPI_Offset chunk_size, 
 	MPI_Offset overlap, int iteration, int rank, int size, 
     MPI_Offset file_size) {
@@ -61,8 +63,10 @@ int communicate(Pair **sendbuf, int **sendcounts, int **sdispl,
 
     MPI_Comm comm = MPI_COMM_WORLD; 
     if (send_counts) {
+#ifdef DEBUG
         printf("communicating sizes on %d from buffer %d ([%d, %d])\n", 
             rank, idx, sendcounts[idx][0], sendcounts[idx][1]);
+#endif
         MPI_Ialltoall(sendcounts[idx], 1, MPI_INT, 
             recvcounts[idx], 1, MPI_INT, comm, &requests[idx]);
     }
@@ -87,14 +91,18 @@ int communicate(Pair **sendbuf, int **sendcounts, int **sdispl,
                 MPI_STATUS_IGNORE
             );
         }
+#ifdef DEBUG
         printf("sending words on %d with buffer "
             "%d (%d, [%d, %d], [%d, %d]) ([%d, %d], [%d, %d]) %d\n", 
             rank, i, size, sendcounts[i][0], sendcounts[i][1], sdispl[i][0], sdispl[i][1],
             recvcounts[i][0], recvcounts[i][1], recvdispls[i][0], recvdispls[i][1], completed);
+#endif
         MPI_Ialltoallv(sendbuf[i], sendcounts[i], sdispl[i], pair_type, 
             recvbuf[i], recvcounts[i], recvdispls[i], pair_type, 
             comm, &all_to_all_requests[i]);
+#ifdef DEBUG
         printf("communication done on %d\n", rank);
+#endif
         return size;
     }
     return 0; 
