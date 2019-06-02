@@ -354,7 +354,7 @@ int main(int argc, char **argv) {
 	MPI_Request *requests, *all_to_all_requests, *file_requests;
 	std::unordered_map<Word,long> process_map;
 	double *times;
-	chunk_size = 64 << 20; // 64 MB
+	chunk_size = 64 << 20	; // 64 MB
 	overlap = 0 << 20; // 2 MB
 
 	MPI_Init(&argc, &argv);
@@ -364,7 +364,10 @@ int main(int argc, char **argv) {
 	// printf("rank %d / %d\n", rank, size);
 	if (argc != 2) {
 		if (rank == 0) {
+#ifdef DEBUG
+
 			printf("Usage: %s <input_filename>", argv[0]);
+#endif
 		}
 		exit(0);
 	}
@@ -378,9 +381,8 @@ int main(int argc, char **argv) {
 	mapreduce(loop_limit, rank, size, fh, buf, chunk_size, overlap, 
 		file_size, times, out_counts, out_offsets, requests, 
 		all_to_all_requests, file_requests, buffers, process_map);	
-
-
 	recap(rank, size, process_map, times);
+
 	for (int i = 0; i < buffers; i++) {
 		free(buf[i]);
 		free(out_counts[i]);
