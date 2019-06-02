@@ -204,11 +204,13 @@ void mapreduce(int loop_limit, int rank, int size, MPI_File fh, char **buf,
 }
 
 void recap(int rank, int world_size, std::unordered_map<Word,long> process_map, double *times) {
+#ifdef DEBUG
     printf("Enter: %d\n", rank);
-
+#endif
 	Word max_word;
 	long max_count = 0;
 	std::vector<Pair> local_pairs;
+	long total_local_words = 0;
 
 	for (auto& it: process_map) {
 		if (it.second > max_count) {
@@ -220,60 +222,103 @@ void recap(int rank, int world_size, std::unordered_map<Word,long> process_map, 
 		p.count = it.second;
 		local_pairs.push_back(p);
 	}
+	total_local_words = local_pairs.size();
 
     // Gather the times
-    double total_times[5]; 
-    total_times[0] = total_times[1] = total_times[2] = total_times[3] = total_times[4] = 0; 
+    int measurements = 7;
+    // double total_times[measurements];
+    double *total_times;
+    total_times = (double*) calloc(measurements, sizeof(double));
+    // total_times[0] = total_times[1] = total_times[2] = total_times[3] = total_times[4] = 0; 
     double *t_recvbuf; 
-    if (rank == 0) t_recvbuf = (double*) malloc(sizeof(double) * world_size * 5); 
-    MPI_Gather(times, 5, MPI_DOUBLE, t_recvbuf, 5, MPI_DOUBLE, 0, MPI_COMM_WORLD); 
+    if (rank == 0) {
+    	t_recvbuf = (double*) malloc(sizeof(double) * world_size * measurements); 
+    } else {
+    	t_recvbuf = NULL;
+    }
+    MPI_Gather(times, measurements, MPI_DOUBLE, t_recvbuf, measurements, MPI_DOUBLE, 0, MPI_COMM_WORLD); 
     if (rank == 0) { 
-        for (int i = 0; i < world_size * 5; i+=5) { 
-            total_times[0] += t_recvbuf[i]; 
-            total_times[1] += t_recvbuf[i+1]; 
-            total_times[2] += t_recvbuf[i+2]; 
-            total_times[3] += t_recvbuf[i+3]; 
-            total_times[4] += t_recvbuf[i+4]; 
+        for (int i = 0; i < world_size * measurements; i += measurements) { 
+        	for (int j = 0; j < measurements; j++) {
+        		total_times[j] += t_recvbuf[i+j];
+        	}
+            // total_times[0] += t_recvbuf[i]; 
+            // total_times[1] += t_recvbuf[i+1]; 
+            // total_times[2] += t_recvbuf[i+2]; 
+            // total_times[3] += t_recvbuf[i+3]; 
+            // total_times[4] += t_recvbuf[i+4]; 
         }
     }
-    if (rank == 0) free(t_recvbuf); 
+    if (rank == 0) {
+    	free(t_recvbuf);
+    }
 
     // Gather the total chars 
-    long total_chars = 0; 
-    long tc_recvbuf[world_size]; 
-    MPI_Gather(&total_local_chars, 1, MPI_LONG, tc_recvbuf, 1, MPI_LONG, 0, MPI_COMM_WORLD); 
+    long total_words = 0; 
+    // long tc_recvbuf[world_size]; 
+    // MPI_Gather(&total_local_words, 1, MPI_LONG, tc_recvbuf, 1, MPI_LONG, 0, MPI_COMM_WORLD); 
     
-    if (rank == 0) { 
-      for (int i = 0; i < world_size; i++) total_chars += tc_recvbuf[i];    
-    }
+    // if (rank == 0) { 
+        // for (int i = 0; i < world_size; i++) {
+      	    // total_words += tc_recvbuf[i];
+      	// }
+    // }
+	MPI_Reduce(&total_local_words, &total_words, 1, MPI_LONG,
+		MPI_SUM, 0, MPI_COMM_WORLD);
+
+
+
+
+
 
     // Gather the size of the pair arrays
     int *recvcounts; 
     int local_size = local_pairs.size(); 
     if (rank == 0) {
     	recvcounts = (int*) malloc(sizeof(int) * world_size); 
-    }
-    MPI_Gather(&local_size, 1, MPI_INT, recvcounts, 1, MPI_INT, 0, MPI_COMM_WORLD); 
-    if (rank == 0) {
-    	for (int i = 0; i < world_size; ++i) {
-    		printf("sizes: %d\n", local_size);
-    	}
+    } else {
+    	recvcounts = NULL;
     }
 
-    // Gather all pairs
-    int displs[world_size]; 
-    displacement(recvcounts, displs, world_size);  
-    int recvcount = sum(recvcounts, world_size); 
-    MPI_Datatype datatype; 
-    define_pair_type(&datatype);  
-    Pair *recvbuf; 
-    if (rank == 0) recvbuf = (Pair*) malloc(sizeof(Pair) * recvcount); 
-    MPI_Gatherv(local_pairs.data(), local_size, datatype, recvbuf, recvcounts, displs, datatype, 0, MPI_COMM_WORLD); 
-    
+    MPI_Gather(&local_size, 1, MPI_INT, recvcounts, 1, MPI_INT, 0, MPI_COMM_WORLD); 
+#ifdef DEBUG
     if (rank == 0) {
-    	free(recvcounts); 
+    	for (int i = 0; i < world_size; ++i) {
+    		printf("sizes: %d\n", recvcounts[i]);
+    	}
     }
+#endif
+    // Gather all pairs
+    int recvcount = 0;
+    int displs[world_size]; 
+    MPI_Datatype datatype; 
+    define_pair_type(&datatype);
+    Pair *recvbuf; 
+    if (rank == 0) {
+		displacement(recvcounts, displs, world_size);  
+		recvcount = sum(recvcounts, world_size); 
+    	recvbuf = (Pair*) malloc(sizeof(Pair) * recvcount); 
+    } else {
+    	recvbuf = NULL;
+    }
+#ifdef DEBUG
+    printf("preparing for MPI_Gatherv on %d\n", rank);
+    if (rank == 0) {
+	    for (int i = 0; i < world_size; i++) {
+		    printf("count: %d\n", recvcounts[i]);
+	    }
+	}
+#endif
+    MPI_Gatherv(local_pairs.data(), local_size, datatype, recvbuf, 
+    	recvcounts, displs, datatype, 0, MPI_COMM_WORLD); 
+#ifdef DEBUG
+    printf("MPI_Gatherv done on %d\n", rank);
+#endif    
     if (rank == 0) { 
+    	free(recvcounts); 
+#ifdef DEBUG
+        printf("found vector of length %d\n", recvcount);
+#endif
         // Init a vector from the buffer
         std::vector<Pair> all_pairs(recvbuf, recvbuf + recvcount); 
         std::sort(all_pairs.begin(), all_pairs.end(), sort_words);
@@ -284,14 +329,19 @@ void recap(int rank, int world_size, std::unordered_map<Word,long> process_map, 
                     rank, i, all_pairs[i].word, all_pairs[i].count);
         }
 
-        printf("times: read: %.2f, map: %.2f, shuffle: %.2f, "
-                "communicate: %.2f, reduce: %.2f\n", 
-                total_times[0], total_times[1], total_times[2], total_times[3], total_times[4]
-              );
-        printf("Total chars: %ld\n", total_chars);
+        printf("times for rank %d (%ld words)\n"
+        	"read: %.2f\tread wait: %.2f\tmap: %.2f\tshuffle: %.2f\t"
+            "communicate: %.2f\treduce wait: %.2f\treduce: %.2f\n", 
+            rank, all_pairs.size(),
+            total_times[0], total_times[1], total_times[2], total_times[3], 
+            total_times[4], total_times[5], total_times[6]
+        );
+        printf("Total words: %ld\n", total_words);
         free (recvbuf); 
     }
+#ifdef DEBUG
     printf("Done: %d\n", rank);
+#endif
 }
 
 int main(int argc, char **argv) {
@@ -304,19 +354,17 @@ int main(int argc, char **argv) {
 	MPI_Request *requests, *all_to_all_requests, *file_requests;
 	std::unordered_map<Word,long> process_map;
 	double *times;
-	chunk_size = 64 << 20	; // 64 MB
+	chunk_size = 64 << 20; // 64 MB
 	overlap = 0 << 20; // 2 MB
 
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+	// printf("rank %d / %d\n", rank, size);
 	if (argc != 2) {
 		if (rank == 0) {
-#ifdef DEBUG
-
 			printf("Usage: %s <input_filename>", argv[0]);
-#endif
 		}
 		exit(0);
 	}

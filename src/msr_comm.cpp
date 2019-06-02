@@ -25,10 +25,12 @@ void read(MPI_File *fh, char *buf, MPI_Offset chunk_size,
 	}
     MPI_File_iread_all(*fh, buf, chunk_size, MPI_CHAR, &file_requests[buffer_idx]);
 	buf[chunk_size + overlap] = '\0';
+#ifdef DEBUG
     char temp[41];
     memcpy(temp, buf, 40);
     temp[40] = '\0';
-    printf("%s\n", temp);
+    printf("chars for chunk: %s\n", temp);
+#endif
 }
 
 void displacement(int *src, int *dst, int size) {
