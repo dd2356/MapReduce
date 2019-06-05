@@ -203,7 +203,7 @@ void mapreduce(int loop_limit, int rank, int size, MPI_File fh, char **buf,
 
 }
 
-void recap(int rank, int world_size, std::unordered_map<Word,long> process_map, double *times) {
+void recap(int rank, int world_size, std::unordered_map<Word,long> process_map, double *times, char *read_file) {
 #ifdef DEBUG
     printf("Enter: %d\n", rank);
 #endif
@@ -266,11 +266,6 @@ void recap(int rank, int world_size, std::unordered_map<Word,long> process_map, 
 	MPI_Reduce(&total_local_words, &total_words, 1, MPI_LONG,
 		MPI_SUM, 0, MPI_COMM_WORLD);
 
-
-
-
-
-
     // Gather the size of the pair arrays
     int *recvcounts; 
     int local_size = local_pairs.size(); 
@@ -328,15 +323,21 @@ void recap(int rank, int world_size, std::unordered_map<Word,long> process_map, 
             printf("Rank %d, top %d: %s -> %ld\n", 
                     rank, i, all_pairs[i].word, all_pairs[i].count);
         }
+        char *write_file = (char*) calloc(strlen(read_file) + 6, sizeof(char));
+        strcat(write_file, read_file); 
+        strcat(write_file, ".bench"); 
+        FILE *fp = fopen(write_file, "w"); 
 
-        printf("times for rank %d (%ld words)\n"
+        fprintf(fp, "times for rank %d (%ld words)\n"
         	"read: %.2f\tread wait: %.2f\tmap: %.2f\tshuffle: %.2f\t"
             "communicate: %.2f\treduce wait: %.2f\treduce: %.2f\n", 
             rank, all_pairs.size(),
             total_times[0], total_times[1], total_times[2], total_times[3], 
             total_times[4], total_times[5], total_times[6]
         );
-        printf("Total words: %ld\n", total_words);
+        fprintf(fp, "Total words: %ld\n", total_words);
+        fclose(fp); 
+        free(write_file); 
         free (recvbuf); 
     }
 #ifdef DEBUG
@@ -381,7 +382,7 @@ int main(int argc, char **argv) {
 	mapreduce(loop_limit, rank, size, fh, buf, chunk_size, overlap, 
 		file_size, times, out_counts, out_offsets, requests, 
 		all_to_all_requests, file_requests, buffers, process_map);	
-	recap(rank, size, process_map, times);
+	recap(rank, size, process_map, times, argv[1]);
 
 	for (int i = 0; i < buffers; i++) {
 		free(buf[i]);
