@@ -323,9 +323,8 @@ void recap(int rank, int world_size, std::unordered_map<Word,long> process_map, 
             printf("Rank %d, top %d: %s -> %ld\n", 
                     rank, i, all_pairs[i].word, all_pairs[i].count);
         }
-        char *write_file = (char*) calloc(strlen(read_file) + 6, sizeof(char));
-        strcat(write_file, read_file); 
-        strcat(write_file, ".bench"); 
+        char *write_file = (char*) calloc(strlen(read_file) + 10, sizeof(char));
+        sprintf(write_file, "%s.%d.bench", read_file, world_size); 
         FILE *fp = fopen(write_file, "w"); 
 
         fprintf(fp, "times for rank %d (%ld words)\n"
