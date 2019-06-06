@@ -203,7 +203,7 @@ void mapreduce(int loop_limit, int rank, int size, MPI_File fh, char **buf,
 
 }
 
-void recap(int rank, int world_size, std::unordered_map<Word,long> process_map, double *times, char *read_file) {
+void recap(int rank, int world_size, std::unordered_map<Word,long> process_map, double *times, char *write_location) {
 #ifdef DEBUG
     printf("Enter: %d\n", rank);
 #endif
@@ -323,8 +323,8 @@ void recap(int rank, int world_size, std::unordered_map<Word,long> process_map, 
             printf("Rank %d, top %d: %s -> %ld\n", 
                     rank, i, all_pairs[i].word, all_pairs[i].count);
         }
-        char *write_file = (char*) calloc(strlen(read_file) + 10, sizeof(char));
-        sprintf(write_file, "%s.%d.bench", read_file, world_size); 
+        char *write_file = (char*) calloc(strlen(write_location) + 10, sizeof(char));
+        sprintf(write_file, "%s.%d.bench", write_location, world_size); 
         FILE *fp = fopen(write_file, "w"); 
 
         fprintf(fp, "times for rank %d (%ld words)\n"
@@ -362,11 +362,11 @@ int main(int argc, char **argv) {
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 
 	// printf("rank %d / %d\n", rank, size);
-	if (argc != 2) {
+	if (argc != 3) {
 		if (rank == 0) {
 #ifdef DEBUG
 
-			printf("Usage: %s <input_filename>", argv[0]);
+			printf("Usage: %s <input_filename> <output_location>", argv[0]);
 #endif
 		}
 		exit(0);
@@ -381,7 +381,7 @@ int main(int argc, char **argv) {
 	mapreduce(loop_limit, rank, size, fh, buf, chunk_size, overlap, 
 		file_size, times, out_counts, out_offsets, requests, 
 		all_to_all_requests, file_requests, buffers, process_map);	
-	recap(rank, size, process_map, times, argv[1]);
+	recap(rank, size, process_map, times, argv[2]);
 
 	for (int i = 0; i < buffers; i++) {
 		free(buf[i]);
