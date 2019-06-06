@@ -318,11 +318,19 @@ void recap(int rank, int world_size, std::unordered_map<Word,long> process_map, 
         std::vector<Pair> all_pairs(recvbuf, recvbuf + recvcount); 
         std::sort(all_pairs.begin(), all_pairs.end(), sort_words);
 
-        int top_10 = all_pairs.size() < 10 ? all_pairs.size() : 10;
-        for (int i = 0; i < top_10; i++) {
-            printf("Rank %d, top %d: %s -> %ld\n", 
-                    rank, i, all_pairs[i].word, all_pairs[i].count);
+        char *word_file = (char*) calloc(strlen(write_location) + 10, sizeof(char));
+        sprintf(word_file, "%s.%d.words", write_location, world_size); 
+        FILE *fpw = fopen(word_file, "w"); 
+
+        for (int i = 0; i < (int)all_pairs.size(); i++) {
+            fprintf(fpw, "%s\t%ld", 
+                    all_pairs[i].word, all_pairs[i].count);
+            if (i < (int)all_pairs.size()-1) {
+            	fprintf(fpw, "\n");
+            }
         }
+        fclose(fpw); 
+
         char *write_file = (char*) calloc(strlen(write_location) + 10, sizeof(char));
         sprintf(write_file, "%s.%d.bench", write_location, world_size); 
         FILE *fp = fopen(write_file, "w"); 
