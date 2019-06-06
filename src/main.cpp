@@ -331,6 +331,13 @@ void recap(int rank, int world_size, std::unordered_map<Word,long> process_map, 
         	"read: %.2f\tread wait: %.2f\tmap: %.2f\tshuffle: %.2f\t"
             "communicate: %.2f\treduce wait: %.2f\treduce: %.2f\n", 
             rank, all_pairs.size(),
+            times[0], times[1], times[2], times[3], 
+            times[4], times[5], times[6]
+        );
+        fprintf(fp, "sum of all execution times: (%ld words)\n"
+        	"read: %.2f\tread wait: %.2f\tmap: %.2f\tshuffle: %.2f\t"
+            "communicate: %.2f\treduce wait: %.2f\treduce: %.2f\n", 
+            all_pairs.size(),
             total_times[0], total_times[1], total_times[2], total_times[3], 
             total_times[4], total_times[5], total_times[6]
         );
