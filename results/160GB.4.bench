@@ -1,0 +1,3 @@
+times for rank 0 (3434141 words)
+read: 0.07	read wait: 106.02	map: 1754.89	shuffle: 12.35	communicate: 24.86	reduce wait: 6.85	reduce: 32.55
+Total words: 3434141
