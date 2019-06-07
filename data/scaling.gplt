@@ -6,7 +6,7 @@ clear
 set terminal png size 640,480
 set output "scaling.png"
 set key top left outside horizontal autotitle columnhead
-set title "Total running time for MapReduce on a problem size of 640GB"
+set title "Strong Scaling: running time for a problem size of 640GB"
 
 set xlabel "MPI processes"
 set xtics nomirror scale 0
@@ -21,4 +21,4 @@ set style histogram rowstacked
 set style fill solid border -1
 set boxwidth 0.75
 
-plot  "scaling.data" using 2:xticlabels(1) , "" using 3, "" using 4, "" using 5, "" using 6, "" using 7, "" using 8
+plot  "scaling2.data" using 2:xticlabels(1) , "" using 3, "" using 4, "" using 5, "" using 6, "" using 7, "" using 8

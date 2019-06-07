@@ -1,3 +1,5 @@
 times for rank 0 (3675573 words)
-read: 0.33	read wait: 980.83	map: 7766.87	shuffle: 65.49	communicate: 653.83	reduce wait: 1765.79	reduce: 81.48
+read: 0.01	read wait: 13.88	map: 125.88	shuffle: 0.96	communicate: 4.57	reduce wait: 9.97	reduce: 1.35
+sum of all execution times: (3675573 words)
+read: 0.42	read wait: 939.79	map: 7951.96	shuffle: 64.29	communicate: 630.28	reduce wait: 1500.45	reduce: 79.96
 Total words: 3675573
