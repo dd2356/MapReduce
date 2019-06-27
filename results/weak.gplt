@@ -1,0 +1,24 @@
+#!/usr/bin/gnuplot -p
+
+reset
+clear
+
+set terminal png size 640,480
+set output "weak_scaling_rank_0.png"
+set key top left outside horizontal autotitle columnhead
+set title "Weak Scaling: run time for process 0"
+
+set xlabel "Problem size (GB)/MPI processes"
+set xtics nomirror scale 0
+
+set ylabel "Time (seconds)"
+set ytics out nomirror
+
+set grid ytics lt 0 lw 1 lc rgb "#bbbbbb"
+
+set style data histogram
+set style histogram rowstacked
+set style fill solid border -1
+set boxwidth 0.75
+
+plot  "weak_scaling_0.data" using 2:xticlabels(1) , "" using 3, "" using 4, "" using 5, "" using 6, "" using 7, "" using 8
